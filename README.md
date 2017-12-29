@@ -13,11 +13,24 @@ Vndr has next command line arguments:
   your `vendor/` directory.
 * `-strict` exits with non-zero status on non-trivial warning
 
+* `-copyFromLocal` 从本地`GOPATH`下复制库到项目`vendor`下
+
 ## Installation
 
 Execute
 
-    go get github.com/LK4D4/vndr
+    go get github.com/xianlubird/vndr
+    
+## vndr.ignore
+`vndr.ignore` 是用来描述需要忽略的包和路径，书写规范如下
+```
+ignoreFolders:
+  - helm
+ignorePaths:
+  - github.com/kubernetes/kompose
+```
+`ignoreFolders`是指忽略本项目某一个文件夹，该文件夹下的所有import 都会被忽略
+`ignorePaths` 是指忽略某个依赖，该`repo`以及子依赖都会被忽略
 
 ## vendor.conf
 
