@@ -15,6 +15,13 @@ Vndr has next command line arguments:
 
 * `-copyFromLocal` 从本地`GOPATH`下复制库到项目`vendor`下
 
+## 痛点以及改进点
+* 在开发k8s 项目时，版本依赖复杂，需要忽略一些 repo 单独管理
+* 各个包管理器对于ignore 支持很差，glide 在update 后会删除ignore 的文件
+* vndr 默认从外网下载包，添加了可以从本地GOPATH 拷贝依赖包的功能
+* 增加两种忽略策略，既可以忽略本地项目的某一个文件夹，也可以忽略指定的repo
+* **使用前如果使用ignore 功能，请先创建vndr.ignore文件**
+
 ## Installation
 
 Execute
