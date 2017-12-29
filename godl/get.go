@@ -6,7 +6,9 @@ package godl
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -27,7 +29,7 @@ type VCS struct {
 // importPath is github.com/LK4D4/vndr, package will be downloaded to
 // vendor/github.com/LK4D4/vndr.
 // rev is desired revision of package.
-func Download(importPath, repoPath, target, rev string) (*VCS, error) {
+func Download(importPath, repoPath, target, rev string, copyFromLocal bool) (*VCS, error) {
 	security := secure
 	// Analyze the import path to determine the version control system,
 	// repository, and the import path for the root of the repository.
@@ -48,15 +50,47 @@ func Download(importPath, repoPath, target, rev string) (*VCS, error) {
 	if err = os.MkdirAll(parent, 0777); err != nil {
 		return nil, err
 	}
-	if rev == "" {
-		if err = rr.vcs.create(root, rr.repo); err != nil {
-			return nil, err
+
+	if copyFromLocal {
+		tmpRepoPath := ""
+		if strings.HasPrefix(rr.repo, "http") {
+			tmpRepoPath = rr.repo[7:]
+		} else if strings.HasPrefix(rr.repo, "https") {
+			tmpRepoPath = rr.repo[9:]
 		}
+		goPath := os.Getenv("GOPATH")
+		realPath := filepath.Join(goPath, "src", tmpRepoPath)
+		if _, tmpErr := os.Stat(realPath); tmpErr != nil {
+			log.Printf("Begin to downloading %s from internet", rr.repo)
+			if rev == "" {
+				if err = rr.vcs.create(root, rr.repo); err != nil {
+					return nil, err
+				}
+			} else {
+				if err = rr.vcs.createRev(root, rr.repo, rev); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			cmd := exec.Command("cp", "-r", realPath, root)
+			if err := cmd.Run(); err != nil {
+				msg := fmt.Sprintf("cp -r %s %s", realPath, root)
+				log.Printf("Run command msg %s %v", msg, err)
+			}
+		}
+
 	} else {
-		if err = rr.vcs.createRev(root, rr.repo, rev); err != nil {
-			return nil, err
+		if rev == "" {
+			if err = rr.vcs.create(root, rr.repo); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = rr.vcs.createRev(root, rr.repo, rev); err != nil {
+				return nil, err
+			}
 		}
 	}
+
 	return &VCS{Root: root, ImportPath: rr.root, Type: rr.vcs.cmd}, nil
 }
 

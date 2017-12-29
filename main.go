@@ -22,9 +22,10 @@ const (
 )
 
 var (
-	verbose        bool
-	cleanWhitelist regexpSlice
-	strict         bool
+	verbose         bool
+	cleanWhitelist  regexpSlice
+	strict          bool
+	isCopyFromLocal bool
 )
 
 type regexpSlice []*regexp.Regexp
@@ -67,6 +68,7 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "shows all warnings")
 	flag.Var(&cleanWhitelist, "whitelist", "regular expressions to whitelist for cleaning phase of vendoring, relative to the vendor/ directory")
 	flag.BoolVar(&strict, "strict", false, "checking mode. treat non-trivial warning as an error")
+	flag.BoolVar(&isCopyFromLocal, "copyFromLocal", false, "copy vendor from local ")
 }
 
 func validateArgs() {
@@ -228,6 +230,8 @@ func main() {
 		}
 	}
 
+	log.Printf("isCopyFromLocal %v", isCopyFromLocal)
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting working directory: %v", err)
@@ -237,12 +241,36 @@ func main() {
 		log.Fatalf("Error getting working directory after evalsymlinks: %v", err)
 	}
 	vd := filepath.Join(wd, vendorDir)
+	log.Println("Reading ignore files")
 
+	ignoreFolders, ignorePaths := readIgnoreFile()
+	log.Printf("ignoreFolders %++v", ignoreFolders)
+	log.Printf("ignorePaths %++v", ignorePaths)
 	log.Println("Collecting initial packages")
-	initPkgs, err := collectPkgs(wd)
+	tmpInitPkgs, err := collectPkgs(wd)
 	if err != nil {
 		log.Fatalf("Error collecting initial packages: %v", err)
 	}
+
+	var initPkgs []*build.Package
+	continueFlag := false
+	for _, tmpPkg := range tmpInitPkgs {
+		for _, tmpIgnorePath := range ignoreFolders {
+			tmpWd := filepath.Join(wd, tmpIgnorePath)
+			if strings.HasPrefix(tmpPkg.Dir, tmpWd) {
+				continueFlag = true
+				break
+			}
+		}
+		if continueFlag {
+			//log.Printf("Ignore folder %s", tmpPkg.Dir)
+			continueFlag = false
+			continue
+		}
+
+		initPkgs = append(initPkgs, tmpPkg)
+	}
+
 	// variables for init
 	var dlFunc func(string) (*build.Package, error)
 	var deps []depEntry
@@ -260,7 +288,7 @@ func main() {
 		log.Printf("Dependencies downloaded. Download time: %v", time.Since(startDownload))
 	} else {
 		dlFunc = func(imp string) (*build.Package, error) {
-			vcs, err := godl.Download(imp, "", filepath.Join(wd, vendorDir), "")
+			vcs, err := godl.Download(imp, "", filepath.Join(wd, vendorDir), "", isCopyFromLocal)
 			if err != nil {
 				return nil, err
 			}
@@ -285,6 +313,7 @@ func main() {
 		log.Fatalf("Error on collecting all dependencies: %v", err)
 	}
 	log.Println("Clean vendor dir from unused packages")
+	cleanWhitelist = addWhilteList(cleanWhitelist)
 	for _, regex := range cleanWhitelist {
 		log.Printf("\tIgnoring paths matching %q", regex.String())
 	}

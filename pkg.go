@@ -38,10 +38,12 @@ func collectAllDeps(wd string, dlFunc func(imp string) (*build.Package, error), 
 		pkgCache[pkg.ImportPath] = pkg
 		deps = append(deps, pkg)
 	}
+
 	for len(deps) != 0 {
 		pkg := deps[len(deps)-1]
 		deps = deps[:len(deps)-1]
 		imports := pkg.Imports
+
 		if initPkgsMap[pkg] {
 			imports = append(imports, pkg.TestImports...)
 			imports = append(imports, pkg.XTestImports...)
@@ -53,7 +55,19 @@ func collectAllDeps(wd string, dlFunc func(imp string) (*build.Package, error), 
 			if _, ok := pkgCache[imp]; ok {
 				continue
 			}
+
+			if isIgnorePath(pkg.ImportPath) {
+				log.Printf("Skip imp %s parent is ignore repo", imp)
+				continue
+			}
+
+			if isIgnorePath(imp) {
+				log.Printf("Skip imp %s is ignore repo", imp)
+				continue
+			}
+
 			ipkg, err := ctx.Import(imp, wd, 0)
+			ipkg = removeIgnoreImports(ipkg)
 			if ipkg.Goroot {
 				continue
 			}

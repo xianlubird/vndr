@@ -87,7 +87,7 @@ func cloneDep(vd string, d depEntry) error {
 		log.Printf("\tClone %s, revision %s", d.importPath, d.rev)
 	}
 	defer log.Printf("\tFinished clone %s", d.importPath)
-	vcs, err := godl.Download(d.importPath, d.repoPath, vd, d.rev)
+	vcs, err := godl.Download(d.importPath, d.repoPath, vd, d.rev, isCopyFromLocal)
 	if err != nil {
 		return fmt.Errorf("%s: %v", d.importPath, err)
 	}
