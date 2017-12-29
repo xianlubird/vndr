@@ -30,6 +30,8 @@ ignorePaths:
   - github.com/kubernetes/kompose
 ```
 `ignoreFolders`是指忽略本项目某一个文件夹，该文件夹下的所有import 都会被忽略
+
+
 `ignorePaths` 是指忽略某个依赖，该`repo`以及子依赖都会被忽略
 
 ## vendor.conf
